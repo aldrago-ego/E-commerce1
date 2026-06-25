@@ -1,32 +1,38 @@
-import { Link, useLocation, Outlet } from "react-router"; // ou "react-router-dom" selon ta config v7
-import { ShoppingBag, User, Menu } from "lucide-react";
+import { Link, useLocation, Outlet } from "react-router";
+import { ShoppingBag, User, Menu, Trash2, X } from "lucide-react";
 import { useState, useEffect } from "react";
+import { useCartStore } from "~/lib/Store";
+// Importation des composants Sheet de Shadcn UI
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "~/components/ui/sheet";
+import { Button } from "~/components/ui/button";
+import {  Plus, Minus } from "lucide-react";
 
 interface LayoutProps {
-  // Optionnel : si tu veux forcer une couleur de texte depuis la page d'accueil
   navTextColor?: "text-white" | "text-slate-900";
 }
 
 export default function RootLayout({ navTextColor = "text-slate-900" }: LayoutProps) {
+  // Récupération des données et actions du Store Zustand
+  const items = useCartStore((state) => state.items);
+  const totalItems = useCartStore((state) => state.getTotalItems());
+  const totalPrice = useCartStore((state) => state.getTotalPrice());
+  const removeFromCart = useCartStore((state) => state.removeFromCart);
+  const clearCart = useCartStore((state) => state.clearCart);
+  const incrementQuantity = useCartStore((state) => state.incrementQuantity);
+  const decrementQuantity = useCartStore((state) => state.decrementQuantity);
+
   const location = useLocation();
   const isHome = location.pathname === "/";
   const [isScrolled, setIsScrolled] = useState(false);
 
-  // Effet pour rendre le layout opaque si l'utilisateur scroll sur la page d'accueil
   useEffect(() => {
     const handleScroll = () => {
-      if (window.scrollY > 50) {
-        setIsScrolled(true);
-      } else {
-        setIsScrolled(false);
-      }
+      setIsScrolled(window.scrollY > 50);
     };
-
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // Gestion des classes de fond et de texte selon la page et le scroll
   const navbarBg = isHome 
     ? (isScrolled ? "bg-white/90 backdrop-blur-md shadow-sm border-b border-slate-100" : "bg-transparent") 
     : "bg-white border-b border-slate-100";
@@ -39,33 +45,129 @@ export default function RootLayout({ navTextColor = "text-slate-900" }: LayoutPr
       <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${navbarBg} ${textColor}`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
           
-          {/* GAUCHE : LOGO */}
+          {/* LOGO */}
           <div className="flex-shrink-0">
             <Link to="/" className="text-2xl font-black tracking-widest uppercase block">
               VÊTEMENT<span className="text-amber-600">.</span>
             </Link>
           </div>
 
-          {/* MILIEU/DROITE : NAV LINKS */}
+          {/* NAV LINKS */}
           <nav className="hidden md:flex items-center space-x-8 font-medium tracking-wide text-sm uppercase">
             <Link to="/" className="hover:opacity-70 transition-opacity">Accueil</Link>
             <Link to="/catalogue" className="hover:opacity-70 transition-opacity">Catalogue</Link>
             <Link to="/contact" className="hover:opacity-70 transition-opacity">Contact</Link>
           </nav>
 
-          {/* DROITE : ICONES UTILS */}
+          {/* ICONES UTILS */}
           <div className="flex items-center space-x-4">
             <button className="p-2 hover:opacity-70 transition-opacity relative" aria-label="Mon compte">
               <User className="h-5 w-5" />
             </button>
             
-            <button className="p-2 hover:opacity-70 transition-opacity relative" aria-label="Panier">
-              <ShoppingBag className="h-5 w-5" />
-              {/* Badge panier - exemple */}
-              <span className="absolute top-1 right-1 bg-amber-600 text-white text-[10px] font-bold rounded-full h-4 w-4 flex items-center justify-center">
-                0
-              </span>
-            </button>
+            {/* PANIER COULISSANT SHADCN UI */}
+            <Sheet>
+              <SheetTrigger asChild>
+                <button className="p-2 hover:opacity-70 transition-opacity relative" aria-label="Panier">
+                  <ShoppingBag className="h-5 w-5" />
+                  {totalItems > 0 && (
+                    <span className="absolute top-1 right-1 bg-amber-600 text-white text-[10px] font-bold rounded-full h-4 w-4 flex items-center justify-center animate-in zoom-in duration-200">
+                      {totalItems}
+                    </span>
+                  )}
+                </button>
+              </SheetTrigger>
+              
+              <SheetContent side="right" className="w-full sm:max-w-md flex flex-col h-full bg-white p-0">
+      {/* ... SheetHeader ... */}
+
+      {/* ZONE DÉROULANTE DES ARTICLES */}
+      <div className="flex-grow overflow-y-auto p-6 space-y-6">
+        {items.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full text-center space-y-3">
+            <ShoppingBag className="h-10 w-10 text-slate-300 stroke-[1.5]" />
+            <p className="text-sm font-medium text-slate-500">Votre panier est vide.</p>
+          </div>
+        ) : (
+          items.map((item) => (
+            <div key={`${item.id}-${item.size}`} className="flex items-start gap-4 border-b border-slate-50 pb-4 last:border-0">
+              <img 
+                src={item.image} 
+                alt={item.name} 
+                className="w-20 aspect-[3/4] object-cover rounded-xl bg-slate-50 shadow-sm"
+              />
+              <div className="flex-grow min-w-0">
+                <h4 className="text-sm font-bold text-slate-900 truncate uppercase tracking-tight">{item.name}</h4>
+                <p className="text-xs text-slate-400 font-semibold uppercase mt-0.5">{item.category}</p>
+                
+                <div className="flex items-center justify-between mt-3">
+                  <span className="text-[11px] bg-slate-100 px-2 py-0.5 rounded font-bold text-slate-600">
+                    Taille : {item.size}
+                  </span>
+                  
+                  {/* 2. LE SÉLECTEUR DE QUANTITÉ DYNAMIQUE */}
+                  <div className="flex items-center border border-slate-200 rounded-lg overflow-hidden bg-white shadow-sm">
+                    <button
+                      onClick={() => decrementQuantity(item.id, item.size)}
+                      className="p-1.5 text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-colors"
+                      aria-label="Diminuer la quantité"
+                    >
+                      <Minus className="h-3 w-3" />
+                    </button>
+                    <span className="px-3 text-xs font-bold text-slate-800 select-none">
+                      {item.quantity}
+                    </span>
+                    <button
+                      onClick={() => incrementQuantity(item.id, item.size)}
+                      className="p-1.5 text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-colors"
+                      aria-label="Augmenter la quantité"
+                    >
+                      <Plus className="h-3 w-3" />
+                    </button>
+                  </div>
+                </div>
+
+                <p className="text-sm font-black text-slate-900 mt-2">
+                  {(item.price * item.quantity).toFixed(2)} €
+                </p>
+              </div>
+              
+              <button 
+                onClick={() => removeFromCart(item.id, item.size)}
+                className="p-1.5 text-slate-400 hover:text-red-500 rounded-lg hover:bg-slate-50 transition-colors self-start"
+                aria-label="Supprimer l'article"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </div>
+          ))
+        )}
+      </div>
+
+                {/* BLOC FIXE : TOTAUX ET VALIDATION */}
+                {items.length > 0 && (
+                  <div className="border-t border-slate-100 p-6 bg-slate-50/50 space-y-4">
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="font-semibold text-slate-500">Sous-total</span>
+                      <span className="font-black text-slate-900 text-lg">{totalPrice.toFixed(2)} €</span>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 gap-2">
+                      <Button className="w-full bg-slate-900 hover:bg-slate-800 text-white py-6 rounded-xl font-bold uppercase tracking-wider text-xs shadow-md">
+                        Passer à la caisse
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        onClick={clearCart}
+                        className="w-full text-slate-400 hover:text-red-500 text-xs font-semibold uppercase tracking-wider py-4 hover:bg-transparent"
+                      >
+                        Vider le panier
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </SheetContent>
+            </Sheet>
 
             {/* Menu Mobile */}
             <button className="p-2 md:hidden hover:opacity-70 transition-opacity">
@@ -77,14 +179,13 @@ export default function RootLayout({ navTextColor = "text-slate-900" }: LayoutPr
       </header>
 
       {/* CONTENU DE LA PAGE */}
-      {/* On met un padding-top (pt-20) sauf sur l'accueil pour que le carrousel passe sous le layout transparent */}
       <main className={`flex-grow ${isHome ? "pt-0" : "pt-20"}`}>
         <Outlet />
       </main>
 
-      {/* FOOTER BASIQUE */}
+      {/* FOOTER */}
       <footer className="bg-slate-900 text-slate-400 py-8 border-t border-slate-800 text-center text-sm">
-        <p>&copy; {new Date().getFullYear()} VotreBoutique. Tous droits réservés.</p>
+        <p>&copy; {new Date().getFullYear()} VÊTEMENT. Tous droits réservés.</p>
       </footer>
     </div>
   );

@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
-import { SlidersHorizontal } from "lucide-react";
+import { SlidersHorizontal, Search, X } from "lucide-react";
 import { Link } from "react-router";
 import { Button } from "~/components/ui/button";
+import { Input } from "~/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "~/components/ui/sheet";
 
-// On définit l'interface pour TypeScript
 interface Product {
   id: number;
   name: string;
@@ -22,10 +22,12 @@ export default function CataloguePage() {
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState("Tous");
   const [sortBy, setSortBy] = useState("featured");
+  
+  // NOUVEAU : État pour la barre de recherche
+  const [searchQuery, setSearchQuery] = useState("");
 
   // APPEL API VERS LE BACKEND C#
   useEffect(() => {
-    // Remplace 5123 par le port affiché par ton terminal C# !
     fetch("http://localhost:5288/api/products") 
       .then((res) => res.json())
       .then((data) => {
@@ -38,10 +40,34 @@ export default function CataloguePage() {
       });
   }, []);
 
-  // Filtrage
-  const filteredProducts = products.filter(product => 
-    selectedCategory === "Tous" || product.category === selectedCategory
-  );
+  // LOGIQUE COMBINÉE : RECHERCHE + FILTRAGE + TRI
+  const processedProducts = products
+    // 1. Filtrage par texte recherché
+    .filter((product) =>
+      product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      product.category.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+    // 2. Filtrage par bouton de catégorie
+    .filter((product) =>
+      selectedCategory === "Tous" || product.category === selectedCategory
+    )
+    // 3. Application du tri sélectionné
+    .sort((a, b) => {
+      if (sortBy === "price-asc") {
+        return a.price - b.price;
+      }
+      if (sortBy === "price-desc") {
+        return b.price - a.price;
+      }
+      if (sortBy === "newest") {
+        // Met en avant les articles taggués "Nouveau" ou trie par ID décroissant si pas de date
+        if (a.tag === "Nouveau" && b.tag !== "Nouveau") return -1;
+        if (a.tag !== "Nouveau" && b.tag === "Nouveau") return 1;
+        return b.id - a.id;
+      }
+      // "featured" par défaut (aucun changement ou critères de tendances)
+      return 0;
+    });
 
   if (loading) {
     return (
@@ -58,14 +84,36 @@ export default function CataloguePage() {
       <div className="border-b border-slate-100 pb-6 mb-8">
         <h1 className="text-3xl font-bold tracking-tight text-slate-900">Notre Collection</h1>
         <p className="mt-2 text-sm text-slate-500">
-          Découvrez nos vêtements conçus pour votre style de tous les jours. ({filteredProducts.length} articles)
+          Découvrez nos vêtements conçus pour votre style de tous les jours. ({processedProducts.length} articles)
         </p>
+      </div>
+
+      {/* NOUVEAU : BARRE DE RECHERCHE */}
+      <div className="relative w-full max-w-md mb-8">
+        <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-slate-400">
+          <Search className="h-4 w-4" />
+        </div>
+        <Input
+          type="text"
+          placeholder="Rechercher un vêtement, une catégorie..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-10 pr-10 py-5 rounded-xl border-slate-200 focus-visible:ring-amber-500 text-sm shadow-sm"
+        />
+        {searchQuery && (
+          <button
+            onClick={() => setSearchQuery("")}
+            className="absolute inset-y-0 right-3 flex items-center text-slate-400 hover:text-slate-600"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
       </div>
 
       {/* 2. BARRE D'OUTILS (FILTRES & TRI) */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
         
-        {/* Filtres version Desktop (Sidebar simple ou boutons de catégorie rapides) */}
+        {/* Filtres version Desktop */}
         <div className="hidden md:flex items-center space-x-2 overflow-x-auto pb-1">
           {CATEGORIES.map((cat) => (
             <button
@@ -81,7 +129,7 @@ export default function CataloguePage() {
           ))}
         </div>
 
-        {/* Filtres version Mobile (Utilisation du composant Sheet de Shadcn UI) */}
+        {/* Filtres version Mobile */}
         <div className="md:hidden flex items-center">
           <Sheet>
             <SheetTrigger asChild>
@@ -112,7 +160,7 @@ export default function CataloguePage() {
           </Sheet>
         </div>
 
-        {/* Section Tri (Select de Shadcn) */}
+        {/* Section Tri */}
         <div className="flex items-center justify-between sm:justify-end gap-4">
           <Select value={sortBy} onValueChange={setSortBy}>
             <SelectTrigger className="w-[180px] text-xs uppercase tracking-wider font-medium">
@@ -129,60 +177,63 @@ export default function CataloguePage() {
 
       </div>
 
-      {/* 3. GRILLE DE PRODUITS */}
-      {filteredProducts.length === 0 ? (
-  <div className="text-center py-24 border border-dashed border-slate-200 rounded-2xl">
-    <p className="text-slate-500 font-medium">Aucun vêtement ne correspond à cette catégorie pour le moment.</p>
-  </div>
-) : (
-  <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-4 gap-y-10 sm:gap-x-6 lg:gap-x-8">
-    {filteredProducts.map((product) => (
-      
-      /* Le Link devient le conteneur principal de CHAQUE carte */
-      <Link 
-        to={`/catalogue/${product.id}`} 
-        key={product.id} 
-        className="group relative flex flex-col cursor-pointer"
-      >
-        
-        {/* Conteneur de l'image */}
-        <div className="relative w-full aspect-[3/4] bg-slate-100 rounded-xl overflow-hidden shadow-sm transition-transform duration-300 group-hover:scale-[1.01]">
-          <img
-            src={product.image}
-            alt={product.name}
-            className="w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
-            loading="lazy"
-          />
-          
-          {/* Badge (Nouveau / Promo) */}
-          {product.tag && (
-            <span className={`absolute top-3 left-3 px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider text-white shadow-sm
-              ${product.tag === "Promo" ? "bg-red-500" : "bg-amber-600"}`}>
-              {product.tag}
-            </span>
-          )}
-
-          {/* Bouton d'ajout rapide au survol (Desktop) */}
-          <div className="absolute inset-x-4 bottom-4 opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 hidden md:block">
-            <Button className="w-full bg-white/95 text-slate-900 hover:bg-white font-semibold text-xs uppercase tracking-wider shadow-md">
-              Aperçu rapide
+      {/* 3. GRILLE DE PRODUITS FILTRÉS */}
+      {processedProducts.length === 0 ? (
+        <div className="text-center py-24 border border-dashed border-slate-200 rounded-2xl">
+          <p className="text-slate-500 font-medium">Aucun vêtement ne correspond à votre recherche actuelle.</p>
+          {(searchQuery || selectedCategory !== "Tous") && (
+            <Button 
+              variant="link" 
+              onClick={() => { setSearchQuery(""); setSelectedCategory("Tous"); }}
+              className="mt-2 text-amber-600 text-xs font-bold uppercase tracking-wider"
+            >
+              Réinitialiser les filtres
             </Button>
-          </div>
+          )}
         </div>
+      ) : (
+        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-4 gap-y-10 sm:gap-x-6 lg:gap-x-8">
+          {processedProducts.map((product) => (
+            <Link 
+              to={`/catalogue/${product.id}`} 
+              key={product.id} 
+              className="group relative flex flex-col cursor-pointer"
+            >
+              {/* Conteneur de l'image */}
+              <div className="relative w-full aspect-[3/4] bg-slate-100 rounded-xl overflow-hidden shadow-sm transition-transform duration-300 group-hover:scale-[1.01]">
+                <img
+                  src={product.image}
+                  alt={product.name}
+                  className="w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
+                  loading="lazy"
+                />
+                
+                {product.tag && (
+                  <span className={`absolute top-3 left-3 px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider text-white shadow-sm
+                    ${product.tag === "Promo" ? "bg-red-500" : "bg-amber-600"}`}>
+                    {product.tag}
+                  </span>
+                )}
 
-        {/* Détails du produit */}
-        <div className="mt-4 flex flex-col flex-grow">
-          <p className="text-xs text-slate-400 uppercase tracking-widest font-semibold">{product.category}</p>
-          <h3 className="text-sm font-medium text-slate-800 mt-1 hover:text-slate-950 transition-colors line-clamp-1">
-            {product.name}
-          </h3>
-          <p className="text-sm font-bold text-slate-950 mt-1.5">{product.price.toFixed(2)} €</p>
+                <div className="absolute inset-x-4 bottom-4 opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 hidden md:block">
+                  <Button className="w-full bg-white/95 text-slate-900 hover:bg-white font-semibold text-xs uppercase tracking-wider shadow-md">
+                    Aperçu rapide
+                  </Button>
+                </div>
+              </div>
+
+              {/* Détails du produit */}
+              <div className="mt-4 flex flex-col flex-grow">
+                <p className="text-xs text-slate-400 uppercase tracking-widest font-semibold">{product.category}</p>
+                <h3 className="text-sm font-medium text-slate-800 mt-1 hover:text-slate-950 transition-colors line-clamp-1">
+                  {product.name}
+                </h3>
+                <p className="text-sm font-bold text-slate-950 mt-1.5">{product.price.toFixed(2)} €</p>
+              </div>
+            </Link>
+          ))}
         </div>
-
-      </Link>
-    ))}
-  </div>
-)}
+      )}
     </div>
   );
 }

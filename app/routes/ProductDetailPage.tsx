@@ -2,6 +2,9 @@ import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router"; // ou react-router-dom
 import { ArrowLeft, ShoppingBag, Check } from "lucide-react";
 import { Button } from "~/components/ui/button";
+import { useCartStore } from "~/lib/Store";
+
+
 
 interface Product {
   id: number;
@@ -35,6 +38,17 @@ export default function ProductDetailPage() {
         setLoading(false);
       });
   }, [id]);
+
+  const addToCart = useCartStore((state) => state.addToCart);
+
+  const handleAddToCart = () => {
+    if (!product || !selectedSize) return;
+    
+    // On pousse le vêtement dans le store global
+    addToCart(product, selectedSize);
+    alert(`${product.name} (Taille ${selectedSize}) ajouté au panier !`);
+  };
+  
 
   if (loading) {
     return (
@@ -118,15 +132,13 @@ export default function ProductDetailPage() {
           {/* BOUTON AJOUT AU PANIER */}
           <div className="mt-8">
             <Button 
-              disabled={!selectedSize}
-              className={`w-full py-7 font-bold uppercase tracking-wider text-xs gap-3 shadow-lg transition-all rounded-xl
-                ${selectedSize 
-                  ? "bg-slate-900 text-white hover:bg-slate-800" 
-                  : "bg-slate-100 text-slate-400 cursor-not-allowed shadow-none"}`}
-            >
-              <ShoppingBag className="h-4 w-4" /> 
-              {selectedSize ? "Ajouter au panier" : "Sélectionnez une taille"}
-            </Button>
+      onClick={handleAddToCart}
+      disabled={!selectedSize}
+      className={`w-full py-7 font-bold uppercase tracking-wider text-xs gap-3 shadow-lg transition-all rounded-xl ...`}
+    >
+      <ShoppingBag className="h-4 w-4" /> 
+      {selectedSize ? "Ajouter au panier" : "Sélectionnez une taille"}
+    </Button>
           </div>
 
           {/* Petit texte rassurance */}
