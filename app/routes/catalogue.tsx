@@ -28,7 +28,7 @@ export default function CataloguePage() {
 
   // APPEL API VERS LE BACKEND C#
   useEffect(() => {
-    fetch("http://localhost:5288/api/products") 
+    fetch(`${import.meta.env.VITE_API_URL}/api/products`) // Utilisation de la variable d'environnement pour l'URL
       .then((res) => res.json())
       .then((data) => {
         setProducts(data);

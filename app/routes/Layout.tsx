@@ -50,7 +50,7 @@ export default function RootLayout({ navTextColor = "text-slate-900" }: LayoutPr
     }));
 
     try {
-      const response = await fetch("http://localhost:5288/api/products/checkout", {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/products/checkout`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

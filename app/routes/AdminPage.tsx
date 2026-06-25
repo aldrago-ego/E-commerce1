@@ -16,7 +16,7 @@ interface Product {
 
 const CATEGORIES = ["Vestes", "T-shirts", "Pantalons", "Sweats", "Robes", "Accessoires"];
 // Tu peux changer le mot de passe admin ici !
-const ADMIN_PASSWORD = "IAI_TOGO_ADMIN"; 
+const ADMIN_PASSWORD = import.meta.env.VITE_MOTEDEPASSE; // Récupère le mot de passe depuis .env ou utilise une valeur par défaut
 
 export default function AdminPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -47,7 +47,7 @@ export default function AdminPage() {
   }, []);
 
   const fetchProducts = () => {
-    fetch("http://localhost:5288/api/products")
+    fetch(`${import.meta.env.VITE_API_URL}/api/products`)
       .then((res) => res.json())
       .then((data) => {
         setProducts(data);
@@ -94,9 +94,9 @@ export default function AdminPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const url = editingId 
-      ? `http://localhost:5288/api/products/${editingId}`
-      : "http://localhost:5288/api/products";
-      
+      ? `${import.meta.env.VITE_API_URL}/api/products/${editingId}`
+      : `${import.meta.env.VITE_API_URL}/api/products`;
+
     const method = editingId ? "PUT" : "POST";
 
     try {
@@ -122,7 +122,7 @@ export default function AdminPage() {
     if (!confirm("Voulez-vous vraiment supprimer cet article définitivement ?")) return;
 
     try {
-      const response = await fetch(`http://localhost:5288/api/products/${id}`, {
+      const response = await fetch(`http://localhost:import.meta.env.VITE_API_URL/api/products/${id}`, {
         method: "DELETE",
       });
 

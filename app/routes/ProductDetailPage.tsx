@@ -24,7 +24,7 @@ export default function ProductDetailPage() {
   const [errorSize, setErrorSize] = useState(false);
 
   useEffect(() => {
-    fetch(`http://localhost:5288/api/products/${id}`)
+    fetch(`${import.meta.env.VITE_API_URL}/api/products/${id}`)
       .then((res) => {
         if (!res.ok) throw new Error("Produit introuvable");
         return res.json();
