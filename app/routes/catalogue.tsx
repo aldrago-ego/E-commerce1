@@ -1,30 +1,55 @@
-import { useState } from "react";
-import { SlidersHorizontal, Grid, List, ChevronDown } from "lucide-react";
-// Importations de composants de type Shadcn (ajuste les chemins selon ta config)
+import { useState, useEffect } from "react";
+import { SlidersHorizontal } from "lucide-react";
+import { Link } from "react-router";
 import { Button } from "~/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "~/components/ui/sheet";
 
-// Exemple de données (ce que ton backend C# renverra plus tard)
-const MOCK_PRODUCTS = [
-  { id: 1, name: "Veste en Jean Oversize", price: 59.99, category: "Vestes", image: "https://images.unsplash.com/photo-1576995853123-5a10305d93c0?w=500&q=80", tag: "Nouveau" },
-  { id: 2, name: "T-Shirt Coton Bio Blanc", price: 24.99, category: "T-shirts", image: "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=500&q=80", tag: "" },
-  { id: 3, name: "Pantalon Cargo Beige", price: 45.00, category: "Pantalons", image: "https://images.unsplash.com/photo-1517423568366-8b83523034fd?w=500&q=80", tag: "Promo" },
-  { id: 4, name: "Sweat à Capuche Minimaliste", price: 49.99, category: "Sweats", image: "https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=500&q=80", tag: "" },
-  { id: 5, name: "Robe d'Été Fleurie", price: 39.99, category: "Robes", image: "https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=500&q=80", tag: "Populaire" },
-  { id: 6, name: "Casquette Canvas Vintage", price: 19.99, category: "Accessoires", image: "https://images.unsplash.com/photo-1588850561407-ed78c282e89b?w=500&q=80", tag: "" },
-];
+// On définit l'interface pour TypeScript
+interface Product {
+  id: number;
+  name: string;
+  price: number;
+  category: string;
+  image: string;
+  tag: string;
+}
 
 const CATEGORIES = ["Tous", "Vestes", "T-shirts", "Pantalons", "Sweats", "Robes", "Accessoires"];
 
 export default function CataloguePage() {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState("Tous");
   const [sortBy, setSortBy] = useState("featured");
 
-  // Logique de filtrage basique côté client (pour l'exemple)
-  const filteredProducts = MOCK_PRODUCTS.filter(product => 
+  // APPEL API VERS LE BACKEND C#
+  useEffect(() => {
+    // Remplace 5123 par le port affiché par ton terminal C# !
+    fetch("http://localhost:5288/api/products") 
+      .then((res) => res.json())
+      .then((data) => {
+        setProducts(data);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error("Erreur de récupération des vêtements:", err);
+        setLoading(false);
+      });
+  }, []);
+
+  // Filtrage
+  const filteredProducts = products.filter(product => 
     selectedCategory === "Tous" || product.category === selectedCategory
   );
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <p className="text-sm font-medium text-slate-500 animate-pulse">Chargement de la collection...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -106,52 +131,58 @@ export default function CataloguePage() {
 
       {/* 3. GRILLE DE PRODUITS */}
       {filteredProducts.length === 0 ? (
-        <div className="text-center py-24 border border-dashed border-slate-200 rounded-2xl">
-          <p className="text-slate-500 font-medium">Aucun vêtement ne correspond à cette catégorie pour le moment.</p>
+  <div className="text-center py-24 border border-dashed border-slate-200 rounded-2xl">
+    <p className="text-slate-500 font-medium">Aucun vêtement ne correspond à cette catégorie pour le moment.</p>
+  </div>
+) : (
+  <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-4 gap-y-10 sm:gap-x-6 lg:gap-x-8">
+    {filteredProducts.map((product) => (
+      
+      /* Le Link devient le conteneur principal de CHAQUE carte */
+      <Link 
+        to={`/catalogue/${product.id}`} 
+        key={product.id} 
+        className="group relative flex flex-col cursor-pointer"
+      >
+        
+        {/* Conteneur de l'image */}
+        <div className="relative w-full aspect-[3/4] bg-slate-100 rounded-xl overflow-hidden shadow-sm transition-transform duration-300 group-hover:scale-[1.01]">
+          <img
+            src={product.image}
+            alt={product.name}
+            className="w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
+            loading="lazy"
+          />
+          
+          {/* Badge (Nouveau / Promo) */}
+          {product.tag && (
+            <span className={`absolute top-3 left-3 px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider text-white shadow-sm
+              ${product.tag === "Promo" ? "bg-red-500" : "bg-amber-600"}`}>
+              {product.tag}
+            </span>
+          )}
+
+          {/* Bouton d'ajout rapide au survol (Desktop) */}
+          <div className="absolute inset-x-4 bottom-4 opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 hidden md:block">
+            <Button className="w-full bg-white/95 text-slate-900 hover:bg-white font-semibold text-xs uppercase tracking-wider shadow-md">
+              Aperçu rapide
+            </Button>
+          </div>
         </div>
-      ) : (
-        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-4 gap-y-10 sm:gap-x-6 lg:gap-x-8">
-          {filteredProducts.map((product) => (
-            <div key={product.id} className="group relative flex flex-col">
-              
-              {/* Conteneur de l'image */}
-              <div className="relative w-full aspect-[3/4] bg-slate-100 rounded-xl overflow-hidden shadow-sm transition-transform duration-300 group-hover:scale-[1.01]">
-                <img
-                  src={product.image}
-                  alt={product.name}
-                  className="w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
-                  loading="lazy"
-                />
-                
-                {/* Badge (Nouveau / Promo) */}
-                {product.tag && (
-                  <span className={`absolute top-3 left-3 px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider text-white shadow-sm
-                    ${product.tag === "Promo" ? "bg-red-500" : "bg-amber-600"}`}>
-                    {product.tag}
-                  </span>
-                )}
 
-                {/* Bouton d'ajout rapide au survol (Desktop) */}
-                <div className="absolute inset-x-4 bottom-4 opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 hidden md:block">
-                  <Button className="w-full bg-white/95 text-slate-900 hover:bg-white font-semibold text-xs uppercase tracking-wider shadow-md">
-                    Aperçu rapide
-                  </Button>
-                </div>
-              </div>
-
-              {/* Détails du produit */}
-              <div className="mt-4 flex flex-col flex-grow">
-                <p className="text-xs text-slate-400 uppercase tracking-widest font-semibold">{product.category}</p>
-                <h3 className="text-sm font-medium text-slate-800 mt-1 hover:text-slate-950 transition-colors cursor-pointer line-clamp-1">
-                  {product.name}
-                </h3>
-                <p className="text-sm font-bold text-slate-950 mt-1.5">{product.price.toFixed(2)} €</p>
-              </div>
-
-            </div>
-          ))}
+        {/* Détails du produit */}
+        <div className="mt-4 flex flex-col flex-grow">
+          <p className="text-xs text-slate-400 uppercase tracking-widest font-semibold">{product.category}</p>
+          <h3 className="text-sm font-medium text-slate-800 mt-1 hover:text-slate-950 transition-colors line-clamp-1">
+            {product.name}
+          </h3>
+          <p className="text-sm font-bold text-slate-950 mt-1.5">{product.price.toFixed(2)} €</p>
         </div>
-      )}
+
+      </Link>
+    ))}
+  </div>
+)}
     </div>
   );
 }
