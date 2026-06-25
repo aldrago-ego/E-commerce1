@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-// Structure d'un article dans le panier
+// Structure d'un article dans le panier (Ajout de la propriété stock)
 export interface CartItem {
   id: number;
   name: string;
@@ -9,14 +9,15 @@ export interface CartItem {
   category: string;
   size: string;
   quantity: number;
+  stock: number; // <--- Crucial pour les vérifications côté client
 }
 
 interface CartState {
   items: CartItem[];
   addToCart: (product: any, size: string) => void;
   removeFromCart: (id: number, size: string) => void;
-  incrementQuantity: (id: number, size: string) => void; // À ajouter
-  decrementQuantity: (id: number, size: string) => void; // À ajouter
+  incrementQuantity: (id: number, size: string) => void;
+  decrementQuantity: (id: number, size: string) => void;
   clearCart: () => void;
   getTotalPrice: () => number;
   getTotalItems: () => number;
@@ -34,6 +35,12 @@ export const useCartStore = create<CartState>((set, get) => ({
       );
 
       if (existingItem) {
+        // Sécurité : On vérifie si la quantité future dépasse le stock disponible
+        if (existingItem.quantity >= product.stock) {
+          alert(`Désolé, impossible d'ajouter plus d'articles. Stock maximal atteint (${product.stock}).`);
+          return { items: state.items };
+        }
+
         // Si oui, on augmente juste sa quantité
         return {
           items: state.items.map((item) =>
@@ -44,7 +51,7 @@ export const useCartStore = create<CartState>((set, get) => ({
         };
       }
 
-      // Si non, on l'ajoute comme nouvel article
+      // Si non, on l'ajoute comme nouvel article en incluant son stock initial
       return {
         items: [
           ...state.items,
@@ -56,6 +63,7 @@ export const useCartStore = create<CartState>((set, get) => ({
             category: product.category,
             size: size,
             quantity: 1,
+            stock: product.stock, // <--- On stocke le stock renvoyé par le backend
           },
         ],
       };
@@ -63,7 +71,7 @@ export const useCartStore = create<CartState>((set, get) => ({
   },
 
   // Retirer un article
- removeFromCart: (id, size) => {
+  removeFromCart: (id, size) => {
     set((state) => ({
       items: state.items.filter((item) => !(item.id === id && item.size === size)),
     }));

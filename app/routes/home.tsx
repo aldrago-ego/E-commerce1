@@ -4,8 +4,8 @@ import Accueil from "./Accueil";
 
 export function meta({}: Route.MetaArgs) {
   return [
-    { title: "New React Router App" },
-    { name: "description", content: "Welcome to React Router!" },
+    { title: "BOUTIQUE" },
+    { name: "description", content: "VENTE DE VÊTEMENTS" },
   ];
 }
 

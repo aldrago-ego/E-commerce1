@@ -6,6 +6,7 @@ import { Input } from "~/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "~/components/ui/sheet";
 
+// On met à jour l'interface pour inclure le stock synchronisé avec le backend
 interface Product {
   id: number;
   name: string;
@@ -13,6 +14,7 @@ interface Product {
   category: string;
   image: string;
   tag: string;
+  stock: number; // Ajouté pour correspondre à ton modèle C#
 }
 
 const CATEGORIES = ["Tous", "Vestes", "T-shirts", "Pantalons", "Sweats", "Robes", "Accessoires"];
@@ -22,8 +24,6 @@ export default function CataloguePage() {
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState("Tous");
   const [sortBy, setSortBy] = useState("featured");
-  
-  // NOUVEAU : État pour la barre de recherche
   const [searchQuery, setSearchQuery] = useState("");
 
   // APPEL API VERS LE BACKEND C#
@@ -60,12 +60,10 @@ export default function CataloguePage() {
         return b.price - a.price;
       }
       if (sortBy === "newest") {
-        // Met en avant les articles taggués "Nouveau" ou trie par ID décroissant si pas de date
         if (a.tag === "Nouveau" && b.tag !== "Nouveau") return -1;
         if (a.tag !== "Nouveau" && b.tag === "Nouveau") return 1;
         return b.id - a.id;
       }
-      // "featured" par défaut (aucun changement ou critères de tendances)
       return 0;
     });
 
@@ -88,7 +86,7 @@ export default function CataloguePage() {
         </p>
       </div>
 
-      {/* NOUVEAU : BARRE DE RECHERCHE */}
+      {/* BARRE DE RECHERCHE */}
       <div className="relative w-full max-w-md mb-8">
         <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-slate-400">
           <Search className="h-4 w-4" />
@@ -113,7 +111,7 @@ export default function CataloguePage() {
       {/* 2. BARRE D'OUTILS (FILTRES & TRI) */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
         
-        {/* Filtres version Desktop */}
+        {/* Filtres Desktop */}
         <div className="hidden md:flex items-center space-x-2 overflow-x-auto pb-1">
           {CATEGORIES.map((cat) => (
             <button
@@ -129,7 +127,7 @@ export default function CataloguePage() {
           ))}
         </div>
 
-        {/* Filtres version Mobile */}
+        {/* Filtres Mobile */}
         <div className="md:hidden flex items-center">
           <Sheet>
             <SheetTrigger asChild>
@@ -177,7 +175,7 @@ export default function CataloguePage() {
 
       </div>
 
-      {/* 3. GRILLE DE PRODUITS FILTRÉS */}
+      {/* 3. GRILLE DE PRODUITS */}
       {processedProducts.length === 0 ? (
         <div className="text-center py-24 border border-dashed border-slate-200 rounded-2xl">
           <p className="text-slate-500 font-medium">Aucun vêtement ne correspond à votre recherche actuelle.</p>
@@ -215,9 +213,16 @@ export default function CataloguePage() {
                   </span>
                 )}
 
+                {/* Badge Rupture de stock directement visible sur le catalogue */}
+                {product.stock === 0 && (
+                  <span className="absolute top-3 right-3 bg-slate-900/90 text-white text-[9px] font-extrabold uppercase px-2 py-1 rounded-md tracking-wider">
+                    Épuisé
+                  </span>
+                )}
+
                 <div className="absolute inset-x-4 bottom-4 opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 hidden md:block">
                   <Button className="w-full bg-white/95 text-slate-900 hover:bg-white font-semibold text-xs uppercase tracking-wider shadow-md">
-                    Aperçu rapide
+                    Voir l'article
                   </Button>
                 </div>
               </div>

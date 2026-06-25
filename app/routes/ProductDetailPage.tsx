@@ -1,10 +1,8 @@
 import { useEffect, useState } from "react";
-import { useParams, Link } from "react-router"; // ou react-router-dom
-import { ArrowLeft, ShoppingBag, Check } from "lucide-react";
+import { useParams, Link } from "react-router"; 
+import { ArrowLeft, ShoppingBag, Check, AlertTriangle } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { useCartStore } from "~/lib/Store";
-
-
 
 interface Product {
   id: number;
@@ -13,15 +11,17 @@ interface Product {
   category: string;
   image: string;
   tag: string;
+  stock: number; // Synchronisé avec le modèle C#
 }
 
 const SIZES = ["S", "M", "L", "XL"];
 
 export default function ProductDetailPage() {
-  const { id } = useParams<{ id: string }>(); // Récupère l'id depuis l'URL
+  const { id } = useParams<{ id: string }>(); 
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedSize, setSelectedSize] = useState<string>("");
+  const [errorSize, setErrorSize] = useState(false);
 
   useEffect(() => {
     fetch(`http://localhost:5288/api/products/${id}`)
@@ -42,13 +42,17 @@ export default function ProductDetailPage() {
   const addToCart = useCartStore((state) => state.addToCart);
 
   const handleAddToCart = () => {
-    if (!product || !selectedSize) return;
+    if (!product) return;
     
-    // On pousse le vêtement dans le store global
+    if (!selectedSize) {
+      setErrorSize(true);
+      return;
+    }
+
+    setErrorSize(false);
     addToCart(product, selectedSize);
     alert(`${product.name} (Taille ${selectedSize}) ajouté au panier !`);
   };
-  
 
   if (loading) {
     return (
@@ -86,7 +90,8 @@ export default function ProductDetailPage() {
             className="w-full h-full object-cover object-center"
           />
           {product.tag && (
-            <span className="absolute top-4 left-4 bg-amber-600 text-white px-3 py-1 rounded-md text-xs font-bold uppercase tracking-wider shadow-sm">
+            <span className={`absolute top-4 left-4 text-white px-3 py-1 rounded-md text-xs font-bold uppercase tracking-wider shadow-sm
+              ${product.tag === "Promo" ? "bg-red-500" : "bg-amber-600"}`}>
               {product.tag}
             </span>
           )}
@@ -100,11 +105,29 @@ export default function ProductDetailPage() {
           
           <hr className="my-6 border-slate-100" />
 
+          {/* GESTION VISUELLE DU STOCK */}
+          <div className="flex items-center gap-2 mb-6">
+            {product.stock === 0 ? (
+              <span className="inline-flex items-center gap-1.5 text-xs font-bold bg-red-50 text-red-700 px-3 py-1 rounded-full">
+                <AlertTriangle className="h-3.5 w-3.5" /> Rupture de stock
+              </span>
+            ) : product.stock <= 3 ? (
+              <span className="inline-flex items-center gap-1.5 text-xs font-bold bg-amber-50 text-amber-700 px-3 py-1 rounded-full animate-pulse">
+                <AlertTriangle className="h-3.5 w-3.5" /> Plus que {product.stock} articles disponibles !
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 text-xs font-bold bg-emerald-50 text-emerald-700 px-3 py-1 rounded-full">
+                <Check className="h-3.5 w-3.5" /> En stock et prêt à être expédié
+              </span>
+            )}
+          </div>
+
           {/* SÉLECTION DES TAILLES */}
           <div className="space-y-3">
             <div className="flex justify-between items-center">
               <span className="text-xs font-bold uppercase tracking-wider text-slate-700">Choisir une taille</span>
-              {selectedSize && <span className="text-xs font-semibold text-amber-600">Taille sélectionnée : {selectedSize}</span>}
+              {errorSize && <span className="text-xs font-semibold text-red-500">Veuillez sélectionner une taille</span>}
+              {!errorSize && selectedSize && <span className="text-xs font-semibold text-amber-600">Taille sélectionnée : {selectedSize}</span>}
             </div>
             
             <div className="flex gap-3">
@@ -112,8 +135,13 @@ export default function ProductDetailPage() {
                 <button
                   key={size}
                   type="button"
-                  onClick={() => setSelectedSize(size)}
+                  disabled={product.stock === 0}
+                  onClick={() => {
+                    setSelectedSize(size);
+                    setErrorSize(false);
+                  }}
                   className={`h-12 w-12 border rounded-xl flex items-center justify-center font-bold text-sm transition-all relative
+                    ${product.stock === 0 ? "opacity-40 cursor-not-allowed bg-slate-100 border-slate-200 text-slate-400" : ""}
                     ${selectedSize === size 
                       ? "border-slate-900 bg-slate-900 text-white shadow-sm scale-105" 
                       : "border-slate-200 text-slate-700 bg-white hover:border-slate-400"}`}
@@ -132,13 +160,20 @@ export default function ProductDetailPage() {
           {/* BOUTON AJOUT AU PANIER */}
           <div className="mt-8">
             <Button 
-      onClick={handleAddToCart}
-      disabled={!selectedSize}
-      className={`w-full py-7 font-bold uppercase tracking-wider text-xs gap-3 shadow-lg transition-all rounded-xl ...`}
-    >
-      <ShoppingBag className="h-4 w-4" /> 
-      {selectedSize ? "Ajouter au panier" : "Sélectionnez une taille"}
-    </Button>
+              onClick={handleAddToCart}
+              disabled={product.stock === 0}
+              className={`w-full py-7 font-bold uppercase tracking-wider text-xs gap-3 shadow-lg transition-all rounded-xl text-white
+                ${product.stock === 0 
+                  ? "bg-slate-300 cursor-not-allowed shadow-none" 
+                  : "bg-slate-900 hover:bg-slate-800"}`}
+            >
+              <ShoppingBag className="h-4 w-4" /> 
+              {product.stock === 0 
+                ? "Rupture de stock" 
+                : selectedSize 
+                  ? "Ajouter au panier" 
+                  : "Sélectionnez une taille"}
+            </Button>
           </div>
 
           {/* Petit texte rassurance */}
